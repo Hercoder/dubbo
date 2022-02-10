@@ -104,18 +104,24 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
+        //验证参数是否为空
         if (type == null)
             throw new IllegalArgumentException("Extension type == null");
+        //验证是否为接口
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");
         }
+        //验证接口是否有 @SPI 注解
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type(" + type +
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
         }
 
+        // EXTENSION_LOADERS 是一个 map ，以接口类型为 key ，拓展加载器 ExtensionLoader 为 value。
+        // 通过 map 做一个缓存，首先从缓存中取
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
+            // 创建一个拓展加载器，并加入缓存
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
             loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         }
@@ -288,25 +294,34 @@ public class ExtensionLoader<T> {
     /**
      * Find the extension with the given name. If the specified name is not found, then {@link IllegalStateException}
      * will be thrown.
+     *
+     * 返回指定名字的拓展类对象。 如果名字未找到则抛出 {@link IllegalStateException} 异常。
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
+        // 参数验证
         if (name == null || name.length() == 0)
             throw new IllegalArgumentException("Extension name == null");
+        // 若 name 为 true，则获取默认的拓展类实现
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        // Holder 作为一个缓存，持有拓展对象，从缓存中获得拓展对象
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
             holder = cachedInstances.get(name);
         }
         Object instance = holder.get();
+        // 双重锁检查
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
+                // 如果缓存中没有
                 if (instance == null) {
+                    // 创建类拓展对象
                     instance = createExtension(name);
+                    // 加入缓存
                     holder.set(instance);
                 }
             }
@@ -482,22 +497,35 @@ public class ExtensionLoader<T> {
         return new IllegalStateException(buf.toString());
     }
 
+    /**
+     * 根据名字创建类拓展对象
+     * @param name
+     * @return
+     */
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        // 通过名字获取拓展类实现的 class 对象
         Class<?> clazz = getExtensionClasses().get(name);
+        // 没有实现类，抛出未找到异常；这里的逻辑就是有拓展类的class才能创建实例
         if (clazz == null) {
             throw findException(name);
         }
         try {
+            // 检查缓存
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
+            // 未命中缓存，创建类拓展对象并加入缓存
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 通过反射注入依赖的属性
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
+                // 循环创建 Wrapper 拓展对象
                 for (Class<?> wrapperClass : wrapperClasses) {
+                    // 将 instance 作为参数传给 Wrapper拓展对象的构造方法，并通过反射创建 Wrapper 实例
+                    // 然后向 Wrapper 实例中注入依赖，再将 Wrapper 的实例赋值给 instance
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
