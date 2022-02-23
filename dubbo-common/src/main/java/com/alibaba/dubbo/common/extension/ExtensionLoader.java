@@ -105,7 +105,7 @@ public class ExtensionLoader<T> {
 
     /**
      * 根据接口类型获取拓展加载器
-     * @param type
+     * @param type  扩展接口限定名
      * @param <T>
      * @return
      */
@@ -130,6 +130,7 @@ public class ExtensionLoader<T> {
         if (loader == null) {
             // 创建一个拓展加载器，并加入缓存
             // 注意这个type
+            // 使用构造函数，数据初始化
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
             loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         }
@@ -539,6 +540,7 @@ public class ExtensionLoader<T> {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     // 将 instance 作为参数传给 Wrapper拓展对象的构造方法，并通过反射创建 Wrapper 实例
                     // 然后向 Wrapper 实例中注入依赖，再将 Wrapper 的实例赋值给 instance
+                    // TODO Wrapper 其实是对 instance对了一层封装
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
@@ -559,10 +561,13 @@ public class ExtensionLoader<T> {
             // objectFactory 是拓展类的工厂，可以通过它的 getExtension 获取扩展类
             // 在扩展类加载器的构造方法中初始化，有两种实现 SpiExtensionFactory 和 SpringExtensionFactory
             // SpiExtensionFactory 用于获取自适应的拓展；SpringExtensionFactory 用来从 Spring 中获取所需的拓展类
+            // TODO getDeclaredMethod()获取的是类自身声明的所有方法，包含public、protected和private方法。
+            // TODO getMethod()获取的是类的所有共有方法，这就包括自身的所有public方法，和从基类继承的、从接口实现的所有public方法。
             if (objectFactory != null) {
                 for (Method method : instance.getClass().getMethods()) {
                     // Dubbo 通过 setter 实现依赖注入
                     // 获取本扩展类的 set 方法
+                    // setXXX 方法入参只有一个
                     if (method.getName().startsWith("set")
                             && method.getParameterTypes().length == 1
                             && Modifier.isPublic(method.getModifiers())) {
@@ -576,7 +581,8 @@ public class ExtensionLoader<T> {
                         // 获取参数 class 对象
                         Class<?> pt = method.getParameterTypes()[0];
                         try {
-                            // 获取属性名，也就是 set 方法后面的第一个字母变小写 0.0
+                            // 获取属性名，也就是 set 方法后面的第一个字母变小写
+                            // 方法名长度 > 3
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
                             // 通过拓展工厂获取拓展类
                             Object object = objectFactory.getExtension(pt, property);
@@ -888,6 +894,7 @@ public class ExtensionLoader<T> {
             Class<?>[] pts = method.getParameterTypes();
             Class<?>[] ets = method.getExceptionTypes();
 
+            // 获得Adaptive的注解
             Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
             StringBuilder code = new StringBuilder(512);
             if (adaptiveAnnotation == null) {
@@ -897,12 +904,14 @@ public class ExtensionLoader<T> {
             } else {
                 int urlTypeIndex = -1;
                 for (int i = 0; i < pts.length; ++i) {
+                    // 寻找列表中的类型是URL.class，记录他的位置，数据放到urlTypeIndex中
                     if (pts[i].equals(URL.class)) {
                         urlTypeIndex = i;
                         break;
                     }
                 }
                 // found parameter in URL type
+                // 找到了URL类型的参数
                 if (urlTypeIndex != -1) {
                     // Null Point check
                     String s = String.format("\nif (arg%d == null) throw new IllegalArgumentException(\"url == null\");",
@@ -917,6 +926,7 @@ public class ExtensionLoader<T> {
                     String attribMethod = null;
 
                     // find URL getter method
+                    // 中断循环标记
                     LBL_PTS:
                     for (int i = 0; i < pts.length; ++i) {
                         Method[] ms = pts[i].getMethods();
