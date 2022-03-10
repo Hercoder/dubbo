@@ -76,6 +76,7 @@ public class DubboBootstrap {
             removeShutdownHook();
         }
         for (ServiceConfig serviceConfig: serviceConfigList) {
+            // Dubbo 服务暴露
             serviceConfig.export();
         }
     }

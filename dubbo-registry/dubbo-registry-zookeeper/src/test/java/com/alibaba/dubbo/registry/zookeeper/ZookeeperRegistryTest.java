@@ -50,6 +50,7 @@ public class ZookeeperRegistryTest {
 
     @Before
     public void setUp() throws Exception {
+        String url = "zookeeper://111.229.198.184:21811";
         int zkServerPort = NetUtils.getAvailablePort();
         this.zkServer = new TestingServer(zkServerPort, true);
         this.registryUrl = URL.valueOf("zookeeper://localhost:" + zkServerPort);
@@ -66,7 +67,7 @@ public class ZookeeperRegistryTest {
 
     @Test
     public void testDefaultPort() {
-        Assert.assertEquals("10.20.153.10:2181", ZookeeperRegistry.appendDefaultPort("10.20.153.10:0"));
+        Assert.assertEquals("111.229.198.184:21811", ZookeeperRegistry.appendDefaultPort("111.229.198.184:0"));
         Assert.assertEquals("10.20.153.10:2181", ZookeeperRegistry.appendDefaultPort("10.20.153.10"));
     }
 

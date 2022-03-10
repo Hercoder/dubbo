@@ -294,6 +294,7 @@ public class ConfigUtils {
     public static int getPid() {
         if (PID < 0) {
             try {
+                // 获取当前JVM进程的PID
                 RuntimeMXBean runtime = ManagementFactory.getRuntimeMXBean();
                 String name = runtime.getName(); // format: "pid@hostname"
                 PID = Integer.parseInt(name.substring(0, name.indexOf('@')));
