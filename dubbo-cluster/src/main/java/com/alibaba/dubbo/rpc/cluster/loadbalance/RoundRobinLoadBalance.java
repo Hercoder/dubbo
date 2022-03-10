@@ -41,8 +41,11 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
     private static int RECYCLE_PERIOD = 60000;
     
     protected static class WeightedRoundRobin {
+        // 服务提供者固定权重
         private int weight;
+        // 当前权重
         private AtomicLong current = new AtomicLong(0);
+        // 上一次更新时间戳
         private long lastUpdate;
         public int getWeight() {
             return weight;
@@ -88,7 +91,9 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
     
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
+        // 根据服务提供者的地址和服务信息+方法名字生成key
         String key = invokers.get(0).getUrl().getServiceKey() + "." + invocation.getMethodName();
+        // 获取缓存
         ConcurrentMap<String, WeightedRoundRobin> map = methodWeightMap.get(key);
         if (map == null) {
             methodWeightMap.putIfAbsent(key, new ConcurrentHashMap<String, WeightedRoundRobin>());
@@ -96,12 +101,16 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
         }
         int totalWeight = 0;
         long maxCurrent = Long.MIN_VALUE;
+        // 当前时间
         long now = System.currentTimeMillis();
         Invoker<T> selectedInvoker = null;
         WeightedRoundRobin selectedWRR = null;
+        // 遍历所有服务提供者
         for (Invoker<T> invoker : invokers) {
             String identifyString = invoker.getUrl().toIdentityString();
+            // 查缓存中得到的服务提供者对应的 WeightedRoundRobin, 如果没有，new一个
             WeightedRoundRobin weightedRoundRobin = map.get(identifyString);
+            // 计算当前预热权重
             int weight = getWeight(invoker, invocation);
             if (weight < 0) {
                 weight = 0;
@@ -112,23 +121,29 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
                 map.putIfAbsent(identifyString, weightedRoundRobin);
                 weightedRoundRobin = map.get(identifyString);
             }
+            // 若缓存中的 WeightedRoundRobin 记录的固定权重和 weight 不一样，那么更新 WeightedRoundRobin 固定权重
             if (weight != weightedRoundRobin.getWeight()) {
                 //weight changed
                 weightedRoundRobin.setWeight(weight);
             }
+            // WeightedRoundRobin 中的当前权重增加，当前权重 = 当前权重 + 固定权重
             long cur = weightedRoundRobin.increaseCurrent();
+            // 设置更新时间
             weightedRoundRobin.setLastUpdate(now);
+            // 记录权重最大的一个节点
             if (cur > maxCurrent) {
                 maxCurrent = cur;
                 selectedInvoker = invoker;
                 selectedWRR = weightedRoundRobin;
             }
+            // 计算总权重
             totalWeight += weight;
         }
         if (!updateLock.get() && invokers.size() != map.size()) {
             if (updateLock.compareAndSet(false, true)) {
                 try {
                     // copy -> modify -> update reference
+                    // 上一次更新时间，用来判断节点是否还存活，移除不存在的节点
                     ConcurrentMap<String, WeightedRoundRobin> newMap = new ConcurrentHashMap<String, WeightedRoundRobin>();
                     newMap.putAll(map);
                     Iterator<Entry<String, WeightedRoundRobin>> it = newMap.entrySet().iterator();
@@ -145,7 +160,9 @@ public class RoundRobinLoadBalance extends AbstractLoadBalance {
             }
         }
         if (selectedInvoker != null) {
+            // 当前权重 = 当前权重 - 总权重
             selectedWRR.sel(totalWeight);
+            // 返回权重最大的服务提供者节点
             return selectedInvoker;
         }
         // should not happen here
