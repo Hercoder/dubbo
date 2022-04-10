@@ -904,16 +904,19 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses() {
+        // 从缓存获取当前SPI的直接扩展类
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 加载并并缓存“四类”，返回的是直接扩展类？？？
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
             }
         }
+        // 返回直接扩展类
         return classes;
     }
 
@@ -922,10 +925,12 @@ public class ExtensionLoader<T> {
      */
     private Map<String, Class<?>> loadExtensionClasses() {
         checkDestroyed();
+        // 加载SPI接口的默认扩展类
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
+        // 从三种路径中将配置文件中的类进行加载并缓存
         for (LoadingStrategy strategy : strategies) {
             loadDirectory(extensionClasses, strategy, type.getName());
 
@@ -950,11 +955,12 @@ public class ExtensionLoader<T> {
      * extract and cache default extension name if exists
      */
     private void cacheDefaultExtensionName() {
+        // 获取注解
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation == null) {
             return;
         }
-
+        // 获取SPI注解的value值
         String value = defaultAnnotation.value();
         if ((value = value.trim()).length() > 0) {
             String[] names = NAME_SEPARATOR.split(value);
@@ -962,6 +968,7 @@ public class ExtensionLoader<T> {
                 throw new IllegalStateException("More than 1 default extension name on extension " + type.getName()
                     + ": " + Arrays.toString(names));
             }
+            // SPI接口中只能指定一个默认扩展名
             if (names.length == 1) {
                 cachedDefaultName = names[0];
             }
@@ -1224,10 +1231,14 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
+        /**
+         * 将当前SPI接口的所有扩展类（四类：普通扩展类，adaptive扩展类，wrapper扩展类，active扩展类）进行加载并进行缓存
+         */
         getExtensionClasses();
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 创建 adaptive 类（要求必须要有adaptive方法）
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
