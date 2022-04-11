@@ -153,7 +153,9 @@ public class ExtensionLoader<T> {
     }
 
     private ExtensionLoader(Class<?> type) {
+        // SPI接口
         this.type = type;
+        // 用于创建当前type中指定功能前缀扩展名实例
         objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
     }
 
@@ -163,17 +165,20 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
+        // 若type为null，则抛出异常
         if (type == null) {
             throw new IllegalArgumentException("Extension type == null");
         }
+        // 若type不是接口，则抛出异常
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type (" + type + ") is not an interface!");
         }
+        // 若type接口没有被@SPI注解修饰，则抛出异常
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type (" + type +
                 ") is not an extension, because it is NOT annotated with @" + SPI.class.getSimpleName() + "!");
         }
-
+        // 获取缓存
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         if (loader == null) {
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
