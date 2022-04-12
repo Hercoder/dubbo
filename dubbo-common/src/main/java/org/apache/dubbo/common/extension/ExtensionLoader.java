@@ -96,10 +96,12 @@ public class ExtensionLoader<T> {
 
     private final Class<?> type;
 
+    // 用来存放 AdaptiveExtensionFactory 类的实例
     private final ExtensionFactory objectFactory;
 
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<>();
 
+    // 存储@SPI的普通实现类，不包含Adaptive实现的类
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
 
     private final Map<String, Object> cachedActivates = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -107,7 +109,9 @@ public class ExtensionLoader<T> {
     private final Map<String, String[]> cachedActivateValues = Collections.synchronizedMap(new LinkedHashMap<>());
     private final ConcurrentMap<String, Holder<Object>> cachedInstances = new ConcurrentHashMap<>();
     private final Holder<Object> cachedAdaptiveInstance = new Holder<>();
+    // 存储@Adaptive 注解的类，不是注解的方法
     private volatile Class<?> cachedAdaptiveClass = null;
+    // SPI接口中注解的value值
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError;
 
@@ -822,11 +826,13 @@ public class ExtensionLoader<T> {
     }
 
     private Map<String, Class<?>> getExtensionClasses() {
+        // 从缓存中获取当前SPI接口的直接扩展类
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 加载并缓存“四类”，返回的是直接扩展类
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -839,12 +845,16 @@ public class ExtensionLoader<T> {
      * synchronized in getExtensionClasses
      */
     private Map<String, Class<?>> loadExtensionClasses() {
+
+        // 加载并缓存SPI接口的默认扩展类
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
+        // 从三种路径中将配置文件中的类加载并缓存
         for (LoadingStrategy strategy : strategies) {
             loadDirectory(extensionClasses, strategy.directory(), type.getName(), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
+            // 这个是加载com.alibaba包下的类，用于兼容dubbo2.6版本
             loadDirectory(extensionClasses, strategy.directory(), type.getName().replace("org.apache", "com.alibaba"), strategy.preferExtensionClassLoader(), strategy.overridden(), strategy.excludedPackages());
         }
 
@@ -855,18 +865,23 @@ public class ExtensionLoader<T> {
      * extract and cache default extension name if exists
      */
     private void cacheDefaultExtensionName() {
+        // 从@SPI修饰接口中获取到SPI注解
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation == null) {
             return;
         }
 
+        // 从SPI注解中获取value属性
         String value = defaultAnnotation.value();
         if ((value = value.trim()).length() > 0) {
+            // 使用都好分割value的属性值
             String[] names = NAME_SEPARATOR.split(value);
+            // 若分割出了多个name，直接抛出异常
             if (names.length > 1) {
                 throw new IllegalStateException("More than 1 default extension name on extension " + type.getName()
                     + ": " + Arrays.toString(names));
             }
+            // SPI接口中只能指定一个默认扩展名
             if (names.length == 1) {
                 cachedDefaultName = names[0];
             }
@@ -1091,6 +1106,9 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // getAdaptiveExtensionClass 获取adaptive类，是个.class
+            // newInstance 是调用这个.class的无参构造函数，创建adaptive 实例
+            // injectExtension 完成adaptive实例的IOC注入
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can't create adaptive extension " + type + ", cause: " + e.getMessage(), e);
@@ -1098,10 +1116,13 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
+        // 将当前SPI的所有扩展类（四类：普通扩展类，adaptive类，wrapper类，active类）
+        // 全部加载并进行缓存
         getExtensionClasses();
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 创建自适应类（要求必须有自适应方法）
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 

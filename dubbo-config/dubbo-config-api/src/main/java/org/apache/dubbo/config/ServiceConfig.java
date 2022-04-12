@@ -116,7 +116,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
      */
     private static final ScheduledExecutorService DELAY_EXPORT_EXECUTOR = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("DubboServiceDelayExporter", true));
 
-    private static final Protocol PROTOCOL = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();
+    private static final Protocol PROTOCOL = ExtensionLoader
+                                                .getExtensionLoader(Protocol.class) // 获取SPI接口Protocol的ExtensionLoader 实例
+                                                .getAdaptiveExtension();    // 使用ExtensionLoader实例获取Protocol的自适应类的实例
 
     /**
      * A {@link ProxyFactory} implementation that will generate a exported service proxy,the JavassistProxyFactory is its
