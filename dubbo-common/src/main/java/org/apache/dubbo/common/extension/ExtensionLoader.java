@@ -114,7 +114,7 @@ public class ExtensionLoader<T> {
     // SPI接口中注解的value值
     private String cachedDefaultName;
     private volatile Throwable createAdaptiveInstanceError;
-
+    // 存储Wrapper类
     private Set<Class<?>> cachedWrapperClasses;
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
@@ -894,8 +894,10 @@ public class ExtensionLoader<T> {
 
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type,
                                boolean extensionLoaderClassLoaderFirst, boolean overridden, String... excludedPackages) {
+        // 拼接出要加载的文件名
         String fileName = dir + type;
         try {
+            // ------------- 将配置文件加载并转换为URL（start）
             Enumeration<java.net.URL> urls = null;
             ClassLoader classLoader = findClassLoader();
 
@@ -914,10 +916,13 @@ public class ExtensionLoader<T> {
                     urls = ClassLoader.getSystemResources(fileName);
                 }
             }
+            // ------------- 将配置文件加载并转换为URL（end）
 
+            // 要加载的文件为什么会出现多个呢？在不同的模块下是可能存在相同的文件的
             if (urls != null) {
                 while (urls.hasMoreElements()) {
                     java.net.URL resourceURL = urls.nextElement();
+                    // 加载配置文件内容
                     loadResource(extensionClasses, classLoader, resourceURL, overridden, excludedPackages);
                 }
             }
@@ -933,7 +938,9 @@ public class ExtensionLoader<T> {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
                 String clazz = null;
+                // 逐行解析配置文件
                 while ((line = reader.readLine()) != null) {
+                    // 解析注解行
                     final int ci = line.indexOf('#');
                     if (ci >= 0) {
                         line = line.substring(0, ci);
@@ -944,12 +951,15 @@ public class ExtensionLoader<T> {
                             String name = null;
                             int i = line.indexOf('=');
                             if (i > 0) {
+                                // 解析出功能性扩展名
                                 name = line.substring(0, i).trim();
+                                // 解析出扩展类名
                                 clazz = line.substring(i + 1).trim();
                             } else {
                                 clazz = line;
                             }
                             if (StringUtils.isNotEmpty(clazz) && !isExcluded(clazz, excludedPackages)) {
+                                // 加载这个类
                                 loadClass(extensionClasses, resourceURL, Class.forName(clazz, true, classLoader), name, overridden);
                             }
                         } catch (Throwable t) {
@@ -978,18 +988,29 @@ public class ExtensionLoader<T> {
 
     private void loadClass(Map<String, Class<?>> extensionClasses, java.net.URL resourceURL, Class<?> clazz, String name,
                            boolean overridden) throws NoSuchMethodException {
+        // 用于判断 type 是否为 clazz 的父类
+        // 判断当前clazz是否实现了当前的SPI接口类型type
         if (!type.isAssignableFrom(clazz)) {
             throw new IllegalStateException("Error occurred when loading extension class (interface: " +
                 type + ", class line: " + clazz.getName() + "), class "
                 + clazz.getName() + " is not subtype of interface.");
         }
+        // 判断 clazz 的注解类型是否为 Adaptive.class
+        // 若当前clazz类上出现了 @Adaptive注解
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
+            // 判断 clazz是否为wrapper类型，wrapper类型的构造函数必须含有@SPI注解的接口，且参数只有一个
         } else if (isWrapperClass(clazz)) {
             cacheWrapperClass(clazz);
+            // 直接扩展类（普通扩展类和active扩展类）
         } else {
+            // 验证当前clazz是否具有无参构造函数
+            // 若没有，则直接抛出异常
+            // 这里表示SPI直接扩展类，要求必须要有无参构造函数
             clazz.getConstructor();
+            // 若功能扩展名为空，则找一个
             if (StringUtils.isEmpty(name)) {
+                // 找一个扩展名
                 name = findAnnotationName(clazz);
                 if (name.length() == 0) {
                     throw new IllegalStateException("No such extension name for the class " + clazz.getName() + " in the config " + resourceURL);
@@ -1054,8 +1075,11 @@ public class ExtensionLoader<T> {
      * cache Adaptive class which is annotated with <code>Adaptive</code>
      */
     private void cacheAdaptiveClass(Class<?> clazz, boolean overridden) {
+        // 若缓存为null或者缓存可覆盖，则将当前clazz写入缓存
         if (cachedAdaptiveClass == null || overridden) {
             cachedAdaptiveClass = clazz;
+            // 若当前缓存中的类与clazz不相同，则抛出异常
+            // 为什么？一个SPI接口只允许有一个Adaptive类，无论是自定义的，还是自动生成的
         } else if (!cachedAdaptiveClass.equals(clazz)) {
             throw new IllegalStateException("More than 1 adaptive class found: "
                 + cachedAdaptiveClass.getName()
@@ -1072,6 +1096,8 @@ public class ExtensionLoader<T> {
         if (cachedWrapperClasses == null) {
             cachedWrapperClasses = new ConcurrentHashSet<>();
         }
+        // 将clazz缓存到set集合
+        // 因为，一个SPI允许有多个wrapper类
         cachedWrapperClasses.add(clazz);
     }
 
@@ -1082,6 +1108,9 @@ public class ExtensionLoader<T> {
      */
     private boolean isWrapperClass(Class<?> clazz) {
         try {
+            // 获取当前clazz的单参构造函数，且这个参数为SPI类型
+            // 若该clazz没有这个构造器，则这里会抛出异常
+            // 若没有抛出异常，则说明当前clazz是个wrapper类
             clazz.getConstructor(type);
             return true;
         } catch (NoSuchMethodException e) {
@@ -1091,6 +1120,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("deprecation")
     private String findAnnotationName(Class<?> clazz) {
+        //
         org.apache.dubbo.common.Extension extension = clazz.getAnnotation(org.apache.dubbo.common.Extension.class);
         if (extension != null) {
             return extension.value();
