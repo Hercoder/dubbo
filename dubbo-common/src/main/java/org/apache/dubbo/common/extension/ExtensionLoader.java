@@ -648,6 +648,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
+        // 从缓存中获取自适应实例
         Object instance = cachedAdaptiveInstance.get();
         if (instance == null) {
             if (createAdaptiveInstanceError != null) {
@@ -660,6 +661,7 @@ public class ExtensionLoader<T> {
                 instance = cachedAdaptiveInstance.get();
                 if (instance == null) {
                     try {
+                        // 创建自适应实例
                         instance = createAdaptiveExtension();
                         cachedAdaptiveInstance.set(instance);
                     } catch (Throwable t) {
@@ -845,7 +847,6 @@ public class ExtensionLoader<T> {
      * synchronized in getExtensionClasses
      */
     private Map<String, Class<?>> loadExtensionClasses() {
-
         // 加载并缓存SPI接口的默认扩展类
         cacheDefaultExtensionName();
 
@@ -1017,11 +1018,15 @@ public class ExtensionLoader<T> {
                 }
             }
 
+            // 使用逗号将扩展名分割为多个
             String[] names = NAME_SEPARATOR.split(name);
             if (ArrayUtils.isNotEmpty(names)) {
+                // 仅仅使用第一个扩展名来缓存activate类
                 cacheActivateClass(clazz, names[0]);
+                // 遍历全部扩展名
                 for (String n : names) {
                     cacheName(clazz, n);
+                    // 缓存扩展类的所有指定的扩展名
                     saveInExtensionClass(extensionClasses, clazz, n, overridden);
                 }
             }
@@ -1032,6 +1037,7 @@ public class ExtensionLoader<T> {
      * cache name
      */
     private void cacheName(Class<?> clazz, String name) {
+        // 将第一个扩展名与clazz配对后缓存
         if (!cachedNames.containsKey(clazz)) {
             cachedNames.put(clazz, name);
         }
@@ -1044,6 +1050,7 @@ public class ExtensionLoader<T> {
         Class<?> c = extensionClasses.get(name);
         if (c == null || overridden) {
             extensionClasses.put(name, clazz);
+            // 一个扩展名不能对应多个扩展类
         } else if (c != clazz) {
             // duplicate implementation is unacceptable
             unacceptableExceptions.add(name);
@@ -1059,10 +1066,12 @@ public class ExtensionLoader<T> {
      * for compatibility, also cache class with old alibaba Activate annotation
      */
     private void cacheActivateClass(Class<?> clazz, String name) {
+        // 获取clazz上的@Activate注解
         Activate activate = clazz.getAnnotation(Activate.class);
         if (activate != null) {
             cachedActivates.put(name, activate);
         } else {
+            // 兼容dubbo2.6
             // support com.alibaba.dubbo.common.extension.Activate
             com.alibaba.dubbo.common.extension.Activate oldActivate = clazz.getAnnotation(com.alibaba.dubbo.common.extension.Activate.class);
             if (oldActivate != null) {
@@ -1120,16 +1129,20 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("deprecation")
     private String findAnnotationName(Class<?> clazz) {
-        //
+        // 获取当前类的@Extension注解
         org.apache.dubbo.common.Extension extension = clazz.getAnnotation(org.apache.dubbo.common.Extension.class);
+        // 若注解不为空，则让注解的value值作为扩展名
         if (extension != null) {
             return extension.value();
         }
 
+        // 若没有注解，获取当前clazz的简单类名
         String name = clazz.getSimpleName();
+        // 若类名是以SPI接口结尾，则截取类名中SPI接口名以外的部分，例如AlipayOrder截取出是Alipay
         if (name.endsWith(type.getSimpleName())) {
             name = name.substring(0, name.length() - type.getSimpleName().length());
         }
+        // 若clazz类名不是以SPI结尾，则直接返回类名，要求全小写
         return name.toLowerCase();
     }
 
