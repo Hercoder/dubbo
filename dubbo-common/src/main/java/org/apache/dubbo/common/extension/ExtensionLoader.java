@@ -435,7 +435,9 @@ public class ExtensionLoader<T> {
     }
 
     private Holder<Object> getOrCreateHolder(String name) {
+        // 从缓存中获取指定name对应的扩展类实例的持有者holder
         Holder<Object> holder = cachedInstances.get(name);
+        // 若holder为null，则创建一个，并放到缓存
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<>());
             holder = cachedInstances.get(name);
@@ -481,6 +483,7 @@ public class ExtensionLoader<T> {
      */
     @SuppressWarnings("unchecked")
     public T getExtension(String name) {
+        // 注意第二个参数为true
         T extension = getExtension(name, true);
         if (extension == null) {
             throw new IllegalArgumentException("Not find extension: " + name);
@@ -492,15 +495,19 @@ public class ExtensionLoader<T> {
         if (StringUtils.isEmpty(name)) {
             throw new IllegalArgumentException("Extension name == null");
         }
+        // 若name指定为“true”，则加载SPI默认扩展名的实例
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        // 获取name对应的holder
         final Holder<Object> holder = getOrCreateHolder(name);
         Object instance = holder.get();
+        // DCL
         if (instance == null) {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // 创建那么对应的扩展类实例
                     instance = createExtension(name, wrap);
                     holder.set(instance);
                 }
@@ -523,10 +530,12 @@ public class ExtensionLoader<T> {
      * Return default extension, return <code>null</code> if it's not configured.
      */
     public T getDefaultExtension() {
+        // 加载并缓存“四类”，获取并缓存SPI接口的默认扩展名
         getExtensionClasses();
         if (StringUtils.isBlank(cachedDefaultName) || "true".equals(cachedDefaultName)) {
             return null;
         }
+        // 加载默认扩展名的实例
         return getExtension(cachedDefaultName);
     }
 
@@ -701,16 +710,20 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name, boolean wrap) {
+        // 获取name的直接扩展类class
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null || unacceptableExceptions.contains(name)) {
             throw findException(name);
         }
         try {
+            // 从缓存中获取该clazz对应的instance实例
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
+            // 实例为null，则创建一个实例，放入到缓存中
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.getDeclaredConstructor().newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 完成实例的IOC注入
             injectExtension(instance);
 
 
@@ -850,6 +863,7 @@ public class ExtensionLoader<T> {
         // 加载并缓存SPI接口的默认扩展类
         cacheDefaultExtensionName();
 
+        // 用于存储SPI接口的直接扩展类
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
         // 从三种路径中将配置文件中的类加载并缓存
