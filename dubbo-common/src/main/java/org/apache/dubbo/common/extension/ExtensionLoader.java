@@ -104,6 +104,7 @@ public class ExtensionLoader<T> {
     // 存储@SPI的普通实现类，不包含Adaptive实现的类
     private final Holder<Map<String, Class<?>>> cachedClasses = new Holder<>();
 
+    // 用于存储@SPI的Activate类
     private final Map<String, Object> cachedActivates = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, Set<String>> cachedActivateGroups = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<String, String[]> cachedActivateValues = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -726,9 +727,8 @@ public class ExtensionLoader<T> {
             // 完成实例的IOC注入
             injectExtension(instance);
 
-
             if (wrap) {
-
+                // 将缓存中的wrapper set集合写入到List，并重新排序
                 List<Class<?>> wrapperClassesList = new ArrayList<>();
                 if (cachedWrapperClasses != null) {
                     wrapperClassesList.addAll(cachedWrapperClasses);
@@ -737,10 +737,14 @@ public class ExtensionLoader<T> {
                 }
 
                 if (CollectionUtils.isNotEmpty(wrapperClassesList)) {
+                    // 遍历所有wrapper
                     for (Class<?> wrapperClass : wrapperClassesList) {
                         Wrapper wrapper = wrapperClass.getAnnotation(Wrapper.class);
                         if (wrapper == null
                             || (ArrayUtils.contains(wrapper.matches(), name) && !ArrayUtils.contains(wrapper.mismatches(), name))) {
+                            // wrapperClass.getConstructor(type) 获取当前wrapper单参构造器
+                            // newInstance(instance)) 调用单参构造器创建实例
+                            // injectExtension() 调用Wrapper的setter完成IOC注入
                             instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                         }
                     }
@@ -748,6 +752,7 @@ public class ExtensionLoader<T> {
             }
 
             initExtension(instance);
+            // 返回最后wrapper的实例
             return instance;
         } catch (Throwable t) {
             throw new IllegalStateException("Extension instance (name: " + name + ", class: " +
@@ -759,6 +764,11 @@ public class ExtensionLoader<T> {
         return getExtensionClasses().containsKey(name);
     }
 
+    /**
+     * 这里主要是完成setter注入
+     * @param instance
+     * @return
+     */
     private T injectExtension(T instance) {
 
         if (objectFactory == null) {
