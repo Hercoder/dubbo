@@ -65,11 +65,14 @@ public class SpringExtensionFactory implements ExtensionFactory, Lifecycle {
     public <T> T getExtension(Class<T> type, String name) {
 
         //SPI should be get from SpiExtensionFactory
+        // 若当前type为SPI接口，则直接结束
         if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {
             return null;
         }
 
+        // 遍历所有Spring所有容器
         for (ApplicationContext context : CONTEXTS) {
+            // 先从当前遍历容器中尝试着获取指定name的bean，若没有，则再尝试着获取指定type的bean
             T bean = BeanFactoryUtils.getOptionalBean(context, name, type);
             if (bean != null) {
                 return bean;

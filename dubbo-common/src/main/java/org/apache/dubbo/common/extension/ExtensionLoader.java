@@ -766,25 +766,34 @@ public class ExtensionLoader<T> {
         }
 
         try {
+            // 遍历当前实例的所有方法
             for (Method method : instance.getClass().getMethods()) {
+                // 若当前方法不是setter，则跳过
                 if (!isSetter(method)) {
                     continue;
                 }
                 /**
                  * Check {@link DisableInject} to see if we need auto injection for this property
                  */
+                // 若当前setter方法上被@DisableInject修饰，则说明当前setter不会自动注入，则跳过
                 if (method.getAnnotation(DisableInject.class) != null) {
                     continue;
                 }
+                // 获取当前setter的参数类型
                 Class<?> pt = method.getParameterTypes()[0];
+                // 若当前参数类型为基本类型，则跳过
+                // dubbo的自动注入，只会注入对象
                 if (ReflectUtils.isPrimitives(pt)) {
                     continue;
                 }
 
                 try {
+                    // 获取setter方法的参数名
                     String property = getSetterProperty(method);
+                    // 创建当前setter的实例对象值，其依次尝试着使用SPI与Spring容器方式创建
                     Object object = objectFactory.getExtension(pt, property);
                     if (object != null) {
+                        // 调用setter，完成注入
                         method.invoke(instance, object);
                     }
                 } catch (Exception e) {
@@ -826,7 +835,9 @@ public class ExtensionLoader<T> {
      */
     private boolean isSetter(Method method) {
         return method.getName().startsWith("set")
+            // 只有一个参数
             && method.getParameterTypes().length == 1
+            // 修饰类型为public
             && Modifier.isPublic(method.getModifiers());
     }
 
