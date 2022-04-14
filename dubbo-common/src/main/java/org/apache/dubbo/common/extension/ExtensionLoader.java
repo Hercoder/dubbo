@@ -1204,6 +1204,10 @@ public class ExtensionLoader<T> {
 
         }
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
+        /**
+         * 打印xxx$Adaptive类
+         */
+        System.out.println(code);
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
         return compiler.compile(code, classLoader);
     }
