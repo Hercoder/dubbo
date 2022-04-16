@@ -79,37 +79,64 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
     private final Class<?> beanClass;
     private static Map<String, Map<String, Class>> beanPropsCache = new HashMap<>();
 
+    /**
+     *
+     * @param beanClass 当前标签解析出的内容要封装的类
+     */
     public DubboBeanDefinitionParser(Class<?> beanClass) {
         this.beanClass = beanClass;
     }
 
+    /**
+     *
+     * @param element 当前要解析的标签
+     * @param parserContext 解析上下文，其中包含了当前配置文件中所有其他标签的解析信息
+     * @param beanClass 当前标签解析出的内容要封装的类，其中就是存放的从标签读出的属性，读到什么就记录下什么
+     * @param registered 解析出的标签是否需要注解到注册中心
+     * @return 解析对象。将读取出的数据最终要构建出一个逻辑上的对象。例如，构建出一个“注册中西”对象，“协议”对象等。
+     */
     @SuppressWarnings("unchecked")
     private static RootBeanDefinition parse(Element element, ParserContext parserContext, Class<?> beanClass, boolean registered) {
+        // ------------------------ 1 创建并初始化解析对象-----------------------------
         RootBeanDefinition beanDefinition = new RootBeanDefinition();
         beanDefinition.setBeanClass(beanClass);
+        // 指定该bean不进行延迟初始化
         beanDefinition.setLazyInit(false);
+
+        // ------------------------ 2 解决Id问题：为空与重复问题-----------------------------
         // config id
+        // 获取当前解析标签的id属性
         String configId = resolveAttribute(element, "id", parserContext);
         if (StringUtils.isNotEmpty(configId)) {
+            // 若id不空，则放入到beanDefinition
             beanDefinition.getPropertyValues().addPropertyValue("id", configId);
         }
         // get id from name
+        // 若id属性为空，则获取name属性赋值给id
         if (StringUtils.isEmpty(configId)) {
             configId = resolveAttribute(element, "name", parserContext);
         }
 
+        // bean名称取id属性值
         String beanName = configId;
+        // 若此时beanName仍为空，即id属性仍为空
         if (StringUtils.isEmpty(beanName)) {
             // generate bean name
+            // 取beanClass的类名
             String prefix = beanClass.getName();
             int counter = 0;
+            // beanName为类名与数字的拼接
             beanName = prefix + "#" + counter;
+            // 查看该beanName是否重复；若重复，则计数字增一
             while (parserContext.getRegistry().containsBeanDefinition(beanName)) {
                 beanName = prefix + "#" + (counter++);
             }
         }
+        // 此时beanName一定不空，且不重复
         beanDefinition.setAttribute(BEAN_NAME, beanName);
 
+        // ------------------------ 3 对特殊标签的处理 -----------------------------
+        // 对<dubbo:protocol/>标签的处理
         if (ProtocolConfig.class.equals(beanClass)) {
 //            for (String name : parserContext.getRegistry().getBeanDefinitionNames()) {
 //                BeanDefinition definition = parserContext.getRegistry().getBeanDefinition(name);
@@ -121,6 +148,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
 //                    }
 //                }
 //            }
+            // 对<dubbo:service/>标签的处理
         } else if (ServiceBean.class.equals(beanClass)) {
             String className = resolveAttribute(element, "class", parserContext);
             if (StringUtils.isNotEmpty(className)) {
@@ -132,7 +160,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
             }
         }
 
-
+        // ------------------------ 4 对普通标签的普适性处理 -----------------------------
         Map<String, Class> beanPropTypeMap = beanPropsCache.get(beanClass.getName());
         if (beanPropTypeMap == null) {
             beanPropTypeMap = new HashMap<>();
