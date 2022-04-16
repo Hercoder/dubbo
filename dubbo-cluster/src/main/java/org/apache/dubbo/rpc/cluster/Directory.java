@@ -26,6 +26,8 @@ import org.apache.dubbo.rpc.RpcException;
 import java.util.List;
 
 /**
+ *
+ * 提供了相同业务接口的Invoker列表
  * Directory. (SPI, Prototype, ThreadSafe)
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Directory_service">Directory Service</a>

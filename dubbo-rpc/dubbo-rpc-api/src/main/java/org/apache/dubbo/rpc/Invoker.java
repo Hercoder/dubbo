@@ -20,6 +20,9 @@ import org.apache.dubbo.common.Node;
 
 /**
  * Invoker. (API/SPI, Prototype, ThreadSafe)
+ * 提供方：服务提供者的代理对象
+ * 消费方：服务提供者的委托对象
+ *
  *
  * @see org.apache.dubbo.rpc.Protocol#refer(Class, org.apache.dubbo.common.URL)
  * @see org.apache.dubbo.rpc.InvokerListener

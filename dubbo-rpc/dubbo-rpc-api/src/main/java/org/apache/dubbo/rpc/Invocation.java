@@ -70,6 +70,7 @@ public interface Invocation {
 
     /**
      * get arguments.
+     * 附件；键值对
      *
      * @return arguments.
      * @serial
