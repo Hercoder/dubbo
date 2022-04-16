@@ -1140,6 +1140,7 @@ public class DubboBootstrap {
 
     private void doStart() {
         // 1. export Dubbo Services
+        // 服务暴露
         exportServices();
 
         // If register consumer instance or has exported services
@@ -1150,6 +1151,7 @@ public class DubboBootstrap {
             registerServiceInstance();
         }
 
+        // 服务引用
         referServices();
 
         // wait async export / refer finish if needed
@@ -1382,6 +1384,7 @@ public class DubboBootstrap {
     }
 
     private void exportServices() {
+        // 遍历当前配置文件中所有<dubbo:servie/>标签
         for (ServiceConfigBase sc : configManager.getServices()) {
             // TODO, compatible with ServiceConfig.export()
             ServiceConfig<?> serviceConfig = (ServiceConfig<?>) sc;
@@ -1392,6 +1395,8 @@ public class DubboBootstrap {
             if (sc.isExported()) {
                 continue;
             }
+
+            // 判断是否是异步暴露
             if (sc.shouldExportAsync()) {
                 ExecutorService executor = executorRepository.getServiceExportExecutor();
                 CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
@@ -1406,8 +1411,11 @@ public class DubboBootstrap {
                 }, executor);
 
                 asyncExportingFutures.add(future);
+                // 处理同步暴露情况
             } else {
+                // 若尚未暴露
                 if (!sc.isExported()) {
+                    // 服务暴露
                     sc.export();
                     exportedServices.add(sc);
                 }

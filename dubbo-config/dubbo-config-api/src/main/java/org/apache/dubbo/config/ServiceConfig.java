@@ -213,6 +213,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @Override
     public synchronized void export() {
+        // 若<dubbo:service/>的export属性为true，且当前服务尚未暴露
         if (this.shouldExport() && !this.exported) {
             this.init();
 
@@ -229,9 +230,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 return;
             }
 
+            // 判断是否延迟暴露
             if (shouldDelay()) {
                 DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
             } else {
+                // 服务暴露
                 doExport();
             }
 
@@ -338,9 +341,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             return;
         }
 
+        // 若<dubbo:service/>的path属性为空，则取interface属性值
+        // URL的格式 protocol://ip:port/path?a=b&b=c&...
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
+        // 假设有三个注册中心，2个服务暴露协议
+        // 为每个服务暴露协议在每个注册中心进行暴露
         doExportUrls();
         exported();
     }
@@ -357,27 +364,34 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 serviceMetadata
         );
 
+        // 获取所有注册的【标注化地址URL】与【兼容性地址URL】
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
+        // 遍历所有服务暴露协议（<dubbo:protocol/>）
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
                     .orElse(path), group, version);
             // In case user specified path, register service one more time to map it to path.
             repository.registerService(pathKey, interfaceClass);
+            // 使用当前遍历的服务暴露协议与所在注册中心配对进行服务暴露
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        // 构建服务暴露URL要使用的map
         Map<String, String> map = buildAttributes(protocolConfig);
 
         //init serviceMetadata attachments
+        // 元数据注册
         serviceMetadata.getAttachments().putAll(map);
 
+        // 构建服务暴露URL
         URL url = buildUrl(protocolConfig, registryURLs, map);
 
+        // 服务暴露
         exportUrl(url, registryURLs);
     }
 
@@ -534,17 +548,23 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     private void exportUrl(URL url, List<URL> registryURLs) {
+        // 获取<dubbo:service/>的scope属性
         String scope = url.getParameter(SCOPE_KEY);
         // don't export when none is configured
+        // 若scope的值不等于none，则进行暴露
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
+            // 若scope的值不等于remote，则进行本地暴露
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 本地暴露
                 exportLocal(url);
             }
 
+            // 若scope的值不等于local，则进行远程暴露
             // export to remote if the config is not local (export to local only when config is local)
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
+                // 远程暴露
                 url = exportRemote(url, registryURLs);
                 MetadataUtils.publishServiceDefinition(url);
             }
@@ -554,7 +574,10 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
     }
 
     private URL exportRemote(URL url, List<URL> registryURLs) {
+
+        // 处理有注册中心的情况
         if (CollectionUtils.isNotEmpty(registryURLs)) {
+            // 遍历所有注册中心URL
             for (URL registryURL : registryURLs) {
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     url = url.addParameterIfAbsent(SERVICE_NAME_MAPPING_KEY, "true");
@@ -585,9 +608,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     }
                 }
 
+                // 远程暴露（仅仅跟踪registryURL地址为registry://....的地址）
                 doExportUrl(registryURL.putAttribute(EXPORT_KEY, url), true);
             }
 
+            // 处理没有注册中心的情况
         } else {
 
             if (MetadataService.class.getName().equals(url.getServiceInterface())) {
@@ -598,6 +623,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
             }
 
+            // 远程暴露（与上面的暴露相比，仅仅没有向注册中心注册）
             doExportUrl(url, true);
         }
 
@@ -607,10 +633,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrl(URL url, boolean withMetaData) {
+        // 构造出invoker
         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // 远程暴露
         Exporter<?> exporter = PROTOCOL.export(invoker);
         exporters.add(exporter);
     }
@@ -621,10 +649,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
      */
     private void exportLocal(URL url) {
         URL local = URLBuilder.from(url)
+            // 将URL的protocol设置为injvm
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
+            // URL没有端口
                 .setPort(0)
                 .build();
+        // 本地暴露
         doExportUrl(local, false);
         logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry url : " + local);
     }

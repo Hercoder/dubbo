@@ -188,28 +188,39 @@ public class ConfigValidationUtils {
     public static List<URL> loadRegistries(AbstractInterfaceConfig interfaceConfig, boolean provider) {
         // check && override if necessary
         List<URL> registryList = new ArrayList<URL>();
+        // 获取<dubbo:application/>标签（有且仅有一个）
         ApplicationConfig application = interfaceConfig.getApplication();
+        // 获取<dubbo:registry/>标签（可以有多个）
         List<RegistryConfig> registries = interfaceConfig.getRegistries();
         if (CollectionUtils.isNotEmpty(registries)) {
+            // 遍历所有<dubbo:registry/>标签
             for (RegistryConfig config : registries) {
+                // 获取<dubbo:registry/>标签address属性
                 String address = config.getAddress();
                 if (StringUtils.isEmpty(address)) {
                     address = ANYHOST_VALUE;
                 }
+                // 只要address不是N/A，即不是不可用
                 if (!RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
+                    // 创建并初始化一个map，这个map中的值为<dubbo:registry/>标签以及相关标签中的属性值
                     Map<String, String> map = new HashMap<String, String>();
+                    // 将<dubbo:application/>标签属性写入map
                     AbstractConfig.appendParameters(map, application);
+                    // 将<dubbo:config/>标签属性写入map
                     AbstractConfig.appendParameters(map, config);
                     map.put(PATH_KEY, RegistryService.class.getName());
                     AbstractInterfaceConfig.appendRuntimeParameters(map);
                     if (!map.containsKey(PROTOCOL_KEY)) {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
+                    // 构建注册中心标准URL
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
                         url = URLBuilder.from(url)
+                            // 向URL中添加registry属性，例如registry=zookeeper
                             .addParameter(REGISTRY_KEY, url.getProtocol())
+                            // 将URL的协议修改为registry
                             .setProtocol(extractRegistryType(url))
                             .build();
                         if ((provider && url.getParameter(REGISTER_KEY, true))
@@ -220,6 +231,7 @@ public class ConfigValidationUtils {
                 }
             }
         }
+        // 为每一个标准URL生成一个兼容URL
         return genCompatibleRegistries(registryList, provider);
     }
 
@@ -229,6 +241,7 @@ public class ConfigValidationUtils {
             if (provider) {
                 // for registries enabled service discovery, automatically register interface compatible addresses.
                 String registerMode;
+                // 处理URL本身就是以service-discovery-registry开头的情况
                 if (SERVICE_REGISTRY_PROTOCOL.equals(registryURL.getProtocol())) {
                     registerMode = registryURL.getParameter(REGISTER_MODE_KEY, ConfigurationUtils.getCachedDynamicProperty(DUBBO_REGISTER_MODE_DEFAULT_KEY, DEFAULT_REGISTER_MODE_INSTANCE));
                     if (!isValidRegisterMode(registerMode)) {
@@ -244,6 +257,7 @@ public class ConfigValidationUtils {
                         result.add(interfaceCompatibleRegistryURL);
                     }
                 } else {
+                    // 处理URL不是以service-discovery-registry开头的情况
                     registerMode = registryURL.getParameter(REGISTER_MODE_KEY, ConfigurationUtils.getCachedDynamicProperty(DUBBO_REGISTER_MODE_DEFAULT_KEY, DEFAULT_REGISTER_MODE_ALL));
                     if (!isValidRegisterMode(registerMode)) {
                         registerMode = DEFAULT_REGISTER_MODE_INTERFACE;
@@ -251,6 +265,7 @@ public class ConfigValidationUtils {
                     if ((DEFAULT_REGISTER_MODE_INSTANCE.equalsIgnoreCase(registerMode) || DEFAULT_REGISTER_MODE_ALL.equalsIgnoreCase(registerMode))
                         && registryNotExists(registryURL, registryList, SERVICE_REGISTRY_PROTOCOL)) {
                         URL serviceDiscoveryRegistryURL = URLBuilder.from(registryURL)
+                            // 设置URL的protocol以service-discovery-registry
                             .setProtocol(SERVICE_REGISTRY_PROTOCOL)
                             .removeParameter(REGISTRY_TYPE_KEY)
                             .build();

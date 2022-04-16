@@ -67,6 +67,10 @@ public class DubboBootstrapApplicationListener implements ApplicationListener, A
         return dubboBootstrap;
     }
 
+    /**
+     * 当Spring容器创建时会触发该方法的执行
+     * @param event
+     */
     @Override
     public void onApplicationEvent(ApplicationEvent event) {
         if (isOriginalEventSource(event)) {
@@ -97,15 +101,20 @@ public class DubboBootstrapApplicationListener implements ApplicationListener, A
             DubboBootstrapStartStopListenerSpringAdapter.applicationContext = event.getApplicationContext();
         }
 
+        // 若事件是容器刷新事件（容器创建、刷新会引发该时间）
         if (event instanceof ContextRefreshedEvent) {
             onContextRefreshedEvent((ContextRefreshedEvent) event);
+
+            // 容器关闭引发该事件
         } else if (event instanceof ContextClosedEvent) {
             onContextClosedEvent((ContextClosedEvent) event);
         }
     }
 
     private void onContextRefreshedEvent(ContextRefreshedEvent event) {
+        // 若处理Dubbo实例的接管者为Spring容器
         if (dubboBootstrap.getTakeoverMode() == BootstrapTakeoverMode.SPRING) {
+            // 启动Dubbo
             dubboBootstrap.start();
         }
     }

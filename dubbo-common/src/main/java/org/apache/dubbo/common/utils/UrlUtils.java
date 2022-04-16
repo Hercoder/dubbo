@@ -72,9 +72,11 @@ public class UrlUtils {
             throw new IllegalArgumentException("Address is not allowed to be empty, please re-enter.");
         }
         String url;
+        // 标准格式
         if (address.contains("://") || address.contains(URL_PARAM_STARTING_SYMBOL)) {
             url = address;
         } else {
+            // 使用,分割出一个注册中心中所有的主机地址
             String[] addresses = COMMA_SPLIT_PATTERN.split(address);
             url = addresses[0];
             if (addresses.length > 1) {
@@ -168,11 +170,13 @@ public class UrlUtils {
         if (address == null || address.length() == 0) {
             throw new IllegalArgumentException("Address is not allowed to be empty, please re-enter.");
         }
+        // 使用分号分割address，分割出多个注册中心
         String[] addresses = REGISTRY_SPLIT_PATTERN.split(address);
         if (addresses == null || addresses.length == 0) {
             throw new IllegalArgumentException("Addresses is not allowed to be empty, please re-enter."); //here won't be empty
         }
         List<URL> registries = new ArrayList<URL>();
+        // 遍历所有注册中心地址
         for (String addr : addresses) {
             registries.add(parseURL(addr, defaults));
         }

@@ -428,8 +428,10 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     public Boolean shouldExportAsync() {
+        // 获取<dubbo:service/>中的export-async属性
         Boolean shouldExportAsync = getExportAsync();
         if (shouldExportAsync == null) {
+            // 获取<dubbo:provider/>中的export-async属性
             shouldExportAsync = provider != null && provider.getExportAsync() != null && provider.getExportAsync();
         }
 

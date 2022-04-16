@@ -14,34 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.dubbo.rpc.protocol.injvm;
+package org.apache.dubbo.demo.provider;
 
-import org.apache.dubbo.rpc.Exporter;
-import org.apache.dubbo.rpc.Invoker;
-import org.apache.dubbo.rpc.protocol.AbstractExporter;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-import java.util.Map;
-
-/**
- * InjvmExporter
- */
-class InjvmExporter<T> extends AbstractExporter<T> {
-
-    private final String key;
-
-    private final Map<String, Exporter<?>> exporterMap;
-
-    InjvmExporter(Invoker<T> invoker, String key, Map<String, Exporter<?>> exporterMap) {
-        super(invoker);
-        this.key = key;
-        this.exporterMap = exporterMap;
-        // 将当前exporter写入到缓存map
-        exporterMap.put(key, this);
+public class ApplicationProvider {
+    public static void main(String[] args) throws Exception {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring/dubbo-provider.xml");
+        context.start();
+        System.in.read();
     }
-
-    @Override
-    public void afterUnExport() {
-        exporterMap.remove(key);
-    }
-
 }
