@@ -1213,12 +1213,15 @@ public class ExtensionLoader<T> {
         } catch (Throwable ignore) {
 
         }
+        // 生成自适应类
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
         /**
          * 打印xxx$Adaptive类
          */
         System.out.println(code);
+        // 获取到自适应compiler
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
+        // 调用自适应compiler完成自动编译
         return compiler.compile(code, classLoader);
     }
 
