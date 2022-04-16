@@ -36,9 +36,12 @@ public class InterfaceCompatibleRegistryProtocol extends RegistryProtocol {
 
     @Override
     protected URL getRegistryUrl(Invoker<?> originInvoker) {
+        // 将注册中心URL进行替换
         URL registryUrl = originInvoker.getUrl();
         if (REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {
+            // 获取registry属性值，这里的值为zookeeper
             String protocol = registryUrl.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY);
+            // 将URL中的protocol由registry替换为zookeeper，并将registry属性删除
             registryUrl = registryUrl.setProtocol(protocol).removeParameter(REGISTRY_KEY);
         }
         return registryUrl;

@@ -194,8 +194,10 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // 获取注册中心URL
         URL registryUrl = getRegistryUrl(originInvoker);
         // url to export locally
+        // 获取服务暴露URL
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -207,16 +209,19 @@ public class RegistryProtocol implements Protocol {
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
+
+        // 服务暴露即将服务的export写入到缓存map
         //export invoker
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
-        // url to registry
+        // url to registry 获取注册中心
         final Registry registry = getRegistry(registryUrl);
         final URL registeredProviderUrl = getUrlToRegistry(providerUrl, registryUrl);
 
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // 注册到注册中心
             register(registry, registeredProviderUrl);
         }
 
@@ -412,6 +417,7 @@ public class RegistryProtocol implements Protocol {
      * @return
      */
     private URL getProviderUrl(final Invoker<?> originInvoker) {
+        // 获取URL中的export属性值，即要暴露的服务的URL
         Object providerURL = originInvoker.getUrl().getAttribute(EXPORT_KEY);
         if (!(providerURL instanceof URL)) {
             throw new IllegalArgumentException("The registry export url is null! registry: " + originInvoker.getUrl().getAddress());

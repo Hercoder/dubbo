@@ -202,6 +202,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         removeFailedUnregistered(url);
         try {
             // Sending a registration request to the server side
+            // 继续注册
+            // dubbo://192.168.3.231:20881/org.apache.dubbo.demo.GreetingService?anyhost=true&application=demo-provider&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&group=greeting&interface=org.apache.dubbo.demo.GreetingService&metadata-type=remote&methods=hello&pid=78330&release=&revision=1.0.0&service-name-mapping=true&side=provider&timestamp=1650130807742&version=1.0.0
             doRegister(url);
         } catch (Exception e) {
             Throwable t = e;

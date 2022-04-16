@@ -151,11 +151,14 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
                 return defaultNopRegistry;
             }
 
+            // 从缓存获取当前服务注册中心URL对应的实例;
+            // eg: zookeeper://111.229.198.184:21811/org.apache.dubbo.registry.RegistryService
             Registry registry = REGISTRIES.get(key);
             if (registry != null) {
                 return registry;
             }
             //create registry by spi/ioc
+            // 创建注册中心实例
             registry = createRegistry(url);
             if (registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

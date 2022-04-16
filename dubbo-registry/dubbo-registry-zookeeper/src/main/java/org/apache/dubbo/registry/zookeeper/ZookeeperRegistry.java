@@ -78,6 +78,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
             group = PATH_SEPARATOR + group;
         }
         this.root = group;
+        // 创建zk客户端，与zk进行连接
         zkClient = zookeeperTransporter.connect(url);
         zkClient.addStateListener((state) -> {
             if (state == StateListener.RECONNECTED) {
@@ -121,6 +122,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
     @Override
     public void doRegister(URL url) {
         try {
+            // 创建一个临时节点
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
