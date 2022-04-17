@@ -303,6 +303,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 创建并启动netty_server
         openServer(url);
         optimizeSerialization(url);
 
@@ -311,15 +312,21 @@ public class DubboProtocol extends AbstractProtocol {
 
     private void openServer(URL url) {
         // find server.
+        // key格式 ip：暴露协议端口；例如：192.168.3.231:20881
         String key = url.getAddress();
         //client can export a service which's only for server to invoke
+        // 表示当前服务是否是provider
         boolean isServer = url.getParameter(IS_SERVER_KEY, true);
         if (isServer) {
+            // 从缓存map中获取当前key对应的异步转换对象
+            // 从key的值可知，一个应用中每个服务暴露协议都会对应一个同异步转换对象
+            // 而一个同异步转换对象会对应一个Netty_Server。即一个主机中每个服务暴露协议会对应创建一个Netty_Server（面试题）
             ProtocolServer server = serverMap.get(key);
             if (server == null) {
                 synchronized (this) {
                     server = serverMap.get(key);
                     if (server == null) {
+                        // 创建同异步转换对象
                         serverMap.put(key, createServer(url));
                     }else {
                         server.reset(url);
@@ -327,6 +334,7 @@ public class DubboProtocol extends AbstractProtocol {
                 }
             } else {
                 // server supports reset, use together with override
+                // 将当前服务URL添加到Server中
                 server.reset(url);
             }
         }

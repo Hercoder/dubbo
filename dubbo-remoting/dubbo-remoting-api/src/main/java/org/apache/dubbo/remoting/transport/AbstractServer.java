@@ -64,6 +64,7 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
         bindAddress = new InetSocketAddress(bindIp, bindPort);
         this.accepts = url.getParameter(ACCEPTS_KEY, DEFAULT_ACCEPTS);
         try {
+            // 创建并启动netty_server
             doOpen();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " bind " + getBindAddress() + ", export " + getLocalAddress());
@@ -97,6 +98,9 @@ public abstract class AbstractServer extends AbstractEndpoint implements Remotin
         }
 
         executorRepository.updateThreadpool(url, executor);
+        // getUrl() 获取原来的url
+        // url.getParameters() 获取当前暴露服务url中的所有属性，其为一个map
+        // addParameters() 将参数map中的属性以元数据的形式添加到原来的url，形成新的url
         super.setUrl(getUrl().addParameters(url.getParameters()));
     }
 
