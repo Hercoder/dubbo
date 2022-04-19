@@ -104,12 +104,21 @@ public class ReferenceConfigCache {
 
     @SuppressWarnings("unchecked")
     public <T> T get(ReferenceConfigBase<T> referenceConfig) {
+        // 生成服务标识key，其格式为group/interface：version
         String key = generator.generateKey(referenceConfig);
+        // 获取业务接口class
         Class<?> type = referenceConfig.getInterfaceClass();
 
+        // proxies为一个缓存map，其为一个双层map。该缓存map中存放的是业务接口对应的所有服务
+        // 外层map的key为业务接口class，value为一个内层map
+        // 内层map的key为服务标识key，value为该服务的代理对象
+
+        // 从缓存map中获取当前业务接口的内层map，即获取到当前业务接口的所有服务
         ConcurrentMap<String, Object> proxiesOfType = proxies.computeIfAbsent(type, _t -> new ConcurrentHashMap<>());
 
+        // 返回内层map的value，即当前服务标识对应的代理对象
         return (T) proxiesOfType.computeIfAbsent(key, _k -> {
+            // 创建代理对象
             Object proxy = referenceConfig.get();
             referredReferences.put(key, referenceConfig);
             return proxy;

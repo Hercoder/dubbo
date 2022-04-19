@@ -202,7 +202,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected void checkRegistry() {
         convertRegistryIdsToRegistries();
 
+        // 遍历指定注册中心
         for (RegistryConfig registryConfig : registries) {
+            // 只要有一个注册中心不可用，就抛出异常
             if (!registryConfig.isValid()) {
                 throw new IllegalStateException("No registry config found or it's not a valid config! " +
                         "The registry config is: " + registryConfig);
@@ -450,6 +452,8 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
     
     protected void computeValidRegistryIds() {
+        // 若<dubbo:application/>标签存在，且<dubbo:reference/>中没有设置registry属性
+        // 则取<dubbo:application/>标签中的registry属性值
         if (application != null && notHasSelfRegistryProperty()) {
             setRegistries(application.getRegistries());
             setRegistryIds(application.getRegistryIds());

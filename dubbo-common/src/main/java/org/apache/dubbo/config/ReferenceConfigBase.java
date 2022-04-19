@@ -100,7 +100,9 @@ public abstract class ReferenceConfigBase<T> extends AbstractReferenceConfig {
 
     public boolean shouldInit() {
         checkDefault();
+        // 获取标签的init属性 默认为true
         Boolean shouldInit = isInit();
+        // 若init为空，则获取<dubbo:consumer/>中的init属性
         if (shouldInit == null && getConsumer() != null) {
             shouldInit = getConsumer().isInit();
         }

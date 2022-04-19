@@ -201,6 +201,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         }
 
         if (ref == null) {
+            // 创建代理对象
             init();
         }
 
@@ -263,6 +264,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 serviceMetadata);
 
 
+        // 创建并初始化一个URL使用的map
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, CONSUMER_SIDE);
 
@@ -322,8 +324,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         }
         map.put(REGISTER_IP_KEY, hostToRegistry);
 
+        // 注册元数据
         serviceMetadata.getAttachments().putAll(map);
 
+        // 创建代理对象
         ref = createProxy(map);
 
         serviceMetadata.setTarget(ref);
@@ -332,6 +336,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         consumerModel.setProxyObject(ref);
         consumerModel.init(attributes);
 
+        // 修改初始化状态
         initialized = true;
 
         checkInvokerAvailable();
@@ -339,14 +344,17 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+        // 判断是否是本地引用
         if (shouldJvmRefer(map)) {
             URL url = new ServiceConfigURL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
             invoker = REF_PROTOCOL.refer(interfaceClass, url);
             if (logger.isInfoEnabled()) {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
+            // 处理远程引用
         } else {
             urls.clear();
+            // 若<dubbo:reference/>的url属性不空，则当前对provider的调用为“直连”调用，无需注册中心
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -364,17 +372,25 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                         }
                     }
                 }
+                // 处理有注册中心的调用情况
             } else { // assemble URL from register center's configuration
                 // if protocols not injvm checkRegistry
                 if (!LOCAL_PROTOCOL.equalsIgnoreCase(getProtocol())) {
+                    // 检测注册中心可用性。只要有一个注册中心不可用，就会抛出异常
                     checkRegistry();
+                    // 获取注册中心的标准URL，其仅仅包含registry://...格式的URL
+                    // 没有service-discovery-registry://...的URL
                     List<URL> us = ConfigValidationUtils.loadRegistries(this, false);
                     if (CollectionUtils.isNotEmpty(us)) {
+                        // 遍历所有注册中心URL
                         for (URL u : us) {
+                            // 获取所有监控中心URL
                             URL monitorUrl = ConfigValidationUtils.loadMonitor(this, u);
                             if (monitorUrl != null) {
+                                // 以monitor属性的形式将监控中心URL添加到注册中心URL中
                                 u = u.putAttribute(MONITOR_KEY, monitorUrl);
                             }
+                            // 以refer属性的形式将消费者URL添加到注册中心URL中
                             urls.add(u.putAttribute(REFER_KEY, map));
                         }
                     }
@@ -388,8 +404,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
 
             if (urls.size() == 1) {
+                // 获取invoker的委托对象
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
+                // 处理注册中心有多个的情况
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
                 for (URL url : urls) {
@@ -425,7 +443,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         URL consumerURL = new ServiceConfigURL(CONSUMER_PROTOCOL, map.get(REGISTER_IP_KEY), 0, map.get(INTERFACE_KEY), map);
         MetadataUtils.publishServiceDefinition(consumerURL);
 
-        // create service proxy
+        // create service proxy 创建代理对象
         return (T) PROXY_FACTORY.getProxy(invoker, ProtocolUtils.isGeneric(generic));
     }
 
@@ -511,12 +529,15 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
     protected boolean shouldJvmRefer(Map<String, String> map) {
         URL tmpUrl = new ServiceConfigURL("temp", "localhost", 0, map);
         boolean isJvmRefer;
+        // 若<dubbo:reference/>中injvm的属性为null
         if (isInjvm() == null) {
             // if a url is specified, don't do local reference
+            // 若<dubbo:reference/>中url属性不为空，则为直连调用，不属于本地调用
             if (url != null && url.length() > 0) {
                 isJvmRefer = false;
             } else {
                 // by default, reference local service if there is
+                // 若<dubbo:reference/>中injvm与url属性均为空，则继续调用
                 isJvmRefer = InjvmProtocol.getInjvmProtocol().isInjvmRefer(tmpUrl);
             }
         } else {

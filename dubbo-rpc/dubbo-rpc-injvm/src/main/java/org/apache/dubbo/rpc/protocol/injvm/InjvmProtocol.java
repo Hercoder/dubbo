@@ -109,7 +109,7 @@ public class InjvmProtocol extends AbstractProtocol implements Protocol {
         } else if (SCOPE_REMOTE.equals(scope)) {
             // it's declared as remote reference
             return false;
-        } else if (url.getParameter(GENERIC_KEY, false)) {
+        } else if (url.getParameter(GENERIC_KEY, false)) { // 泛化引用
             // generic invocation is not local reference
             return false;
         } else if (getExporter(exporterMap, url) != null) {

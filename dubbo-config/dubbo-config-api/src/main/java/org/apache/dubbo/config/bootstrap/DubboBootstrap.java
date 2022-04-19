@@ -1116,6 +1116,7 @@ public class DubboBootstrap {
                     logger.info(NAME + " is starting...");
                 }
 
+                // 服务启动或者服务引用
                 doStart();
 
                 if (logger.isInfoEnabled()) {
@@ -1443,6 +1444,7 @@ public class DubboBootstrap {
             cache = ReferenceConfigCache.getCache();
         }
 
+        // 遍历所有<dubbo:reference/>标签
         configManager.getReferences().forEach(rc -> {
             // TODO, compatible with  ReferenceConfig.refer()
             ReferenceConfig<?> referenceConfig = (ReferenceConfig<?>) rc;
@@ -1451,7 +1453,9 @@ public class DubboBootstrap {
                 referenceConfig.refresh();
             }
 
+            // 判断当前<dubbo:reference/>标签指引用的实例是否需要立即初始化
             if (rc.shouldInit()) {
+                // 判断是否是异步引用
                 if (rc.shouldReferAsync()) {
                     ExecutorService executor = executorRepository.getServiceReferExecutor();
                     CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
@@ -1464,6 +1468,7 @@ public class DubboBootstrap {
 
                     asyncReferringFutures.add(future);
                 } else {
+                    // 处理同步引用
                     cache.get(rc);
                 }
             }

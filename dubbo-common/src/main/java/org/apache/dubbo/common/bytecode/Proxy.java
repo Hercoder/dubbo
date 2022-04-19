@@ -229,6 +229,7 @@ public abstract class Proxy {
             ccm.setSuperClass(Proxy.class);
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
             Class<?> pc = ccm.toClass();
+            // 创建proxy的class
             proxy = (Proxy) pc.newInstance();
 
             synchronized (classCache) {
