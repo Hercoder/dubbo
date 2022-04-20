@@ -189,6 +189,7 @@ public abstract class CacheableFailbackRegistry extends FailbackRegistry {
             }
         }
 
+        // 为没有子节点的节点创建一个 empty://...的URL
         if (urls.isEmpty()) {
             int i = path.lastIndexOf(PATH_SEPARATOR);
             String category = i < 0 ? path : path.substring(i + 1);

@@ -184,6 +184,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                // 主动调动notify，更新本地invoker
                 notify(url, listener, urls);
                 // tells the listener to run only after the sync notification of main thread finishes.
                 latch.countDown();
