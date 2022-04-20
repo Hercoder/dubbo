@@ -141,6 +141,7 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
     @Override
     public void doSubscribe(final URL url, final NotifyListener listener) {
         try {
+            // 处理<dubbo:reference/>的interface属性为“*”的情况
             if (ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
@@ -165,15 +166,19 @@ public class ZookeeperRegistry extends CacheableFailbackRegistry {
                     }
                 }
             } else {
+                // 处理<dubbo:reference/>的interface属性为普通值的情况
                 CountDownLatch latch = new CountDownLatch(1);
                 List<URL> urls = new ArrayList<>();
+                // 遍历configurators，routers与providers三个路径
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
                     ChildListener zkListener = listeners.computeIfAbsent(listener, k -> new RegistryChildListenerImpl(url, path, k, latch));
                     if (zkListener instanceof RegistryChildListenerImpl) {
                         ((RegistryChildListenerImpl) zkListener).setLatch(latch);
                     }
+                    // 创建持久节点
                     zkClient.create(path, false);
+                    // 为创建的节点添加子节点列表变更的watcher监听
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));

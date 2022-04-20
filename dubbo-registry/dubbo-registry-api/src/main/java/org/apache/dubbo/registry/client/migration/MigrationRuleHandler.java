@@ -43,7 +43,7 @@ public class MigrationRuleHandler<T> {
             return;
         }
 
-        // initial step : APPLICATION_FIRST
+        // initial step : APPLICATION_FIRST 迁移步骤默认为“应用优先”
         MigrationStep step = MigrationStep.APPLICATION_FIRST;
         float threshold = -1f;
 
@@ -54,6 +54,7 @@ public class MigrationRuleHandler<T> {
             logger.error("Failed to get step and threshold info from rule: " + rule, e);
         }
 
+        // 根据注册中心更新本地invoker委托对象
         if (refreshInvoker(step, threshold, rule)) {
             // refresh success, update rule
             setMigrationRule(rule);
@@ -68,8 +69,9 @@ public class MigrationRuleHandler<T> {
 
         if ((currentStep == null || currentStep != step) || !currentThreshold.equals(threshold)) {
             boolean success = true;
+            // 根据不同迁移步骤，采用不同刷新方式
             switch (step) {
-                case APPLICATION_FIRST:
+                case APPLICATION_FIRST: // 应用优先
                     migrationInvoker.migrateToApplicationFirstInvoker(newRule);
                     break;
                 case FORCE_APPLICATION:

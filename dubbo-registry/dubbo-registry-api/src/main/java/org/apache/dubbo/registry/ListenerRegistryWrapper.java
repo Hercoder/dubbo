@@ -103,6 +103,7 @@ public class ListenerRegistryWrapper implements Registry {
     @Override
     public void subscribe(URL url, NotifyListener listener) {
         try {
+            // 继续订阅
             registry.subscribe(url, listener);
         } finally {
             if (CollectionUtils.isNotEmpty(listeners)) {

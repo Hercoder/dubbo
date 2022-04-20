@@ -420,6 +420,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                     }
                 }
 
+                // 若有可用的注册中心
                 if (registryURL != null) { // registry url is available
                     // for multi-subscription scenario, use 'zone-aware' policy by default
                     String cluster = registryURL.getParameter(CLUSTER_KEY, ZoneAwareCluster.NAME);

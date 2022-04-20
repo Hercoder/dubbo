@@ -455,6 +455,7 @@ public class RegistryProtocol implements Protocol {
             }
         }
 
+        // 获取cluster属性，即集群容错策略，默认failover策略
         Cluster cluster = Cluster.getCluster(qs.get(CLUSTER_KEY));
         return doRefer(cluster, registry, type, url, qs);
     }
@@ -470,7 +471,9 @@ public class RegistryProtocol implements Protocol {
             parameters,
             consumerAttribute);
         url = url.putAttribute(CONSUMER_URL_KEY, consumerUrl);
+        // 创建一个具有注册中心迁移功能的invoker
         ClusterInvoker<T> migrationInvoker = getMigrationInvoker(this, cluster, registry, type, url, consumerUrl);
+        // 拦截invoker，为invoker添加迁移监听器
         return interceptInvoker(migrationInvoker, url, consumerUrl, url);
     }
 
@@ -488,6 +491,7 @@ public class RegistryProtocol implements Protocol {
             return invoker;
         }
 
+        // 遍历所有监听器，为订阅过程添加这些监听功能
         for (RegistryProtocolListener listener : listeners) {
             listener.onRefer(this, invoker, consumerUrl, registryURL);
         }
@@ -515,11 +519,15 @@ public class RegistryProtocol implements Protocol {
             parameters.remove(REGISTER_IP_KEY), 0, getPath(parameters, type), parameters);
         if (directory.isShouldRegister()) {
             directory.setRegisteredConsumerUrl(urlToRegistry);
+            // 将当前consumer注册到注册中心
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 将所有RouteFactory激活扩展类创建的router添加到directory
         directory.buildRouterChain(urlToRegistry);
+        // 服务订阅
         directory.subscribe(toSubscribeUrl(urlToRegistry));
 
+        // 将多个invoker伪装成一个具有复合功能的invoker
         return (ClusterInvoker<T>) cluster.join(directory);
     }
 

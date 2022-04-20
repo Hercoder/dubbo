@@ -170,16 +170,21 @@ public abstract class CacheableFailbackRegistry extends FailbackRegistry {
 
     protected List<URL> toUrlsWithEmpty(URL consumer, String path, Collection<String> providers) {
         List<URL> urls = new ArrayList<>(1);
+        // 判断当前path是否以providers结尾
         boolean isProviderPath = path.endsWith(PROVIDERS_CATEGORY);
         if (isProviderPath) {
+            // 处理providers节点情况
             if (CollectionUtils.isNotEmpty(providers)) {
+                // 将providers节点的所有子节点变为url
                 urls = toUrlsWithoutEmpty(consumer, providers);
             } else {
                 // clear cache on empty notification: unsubscribe or provider offline
                 evictURLCache(consumer);
             }
         } else {
+            // 处理configurators与routers节点情况
             if (CollectionUtils.isNotEmpty(providers)) {
+                // 将configurators与routers节点的所有子节点变为url
                 urls = toConfiguratorsWithoutEmpty(consumer, providers);
             }
         }

@@ -236,11 +236,13 @@ public class MigrationInvoker<T> implements MigrationClusterInvoker<T> {
     @Override
     public void migrateToApplicationFirstInvoker(MigrationRule newRule) {
         CountDownLatch latch = new CountDownLatch(0);
+        // 刷新invoker
         refreshInterfaceInvoker(latch);
         refreshServiceDiscoveryInvoker(latch);
 
         // directly calculate preferred invoker, will not wait until address notify
         // calculation will re-occurred when address notify later
+        // this.currentAvailableInvoker在此方法中进行赋值
         calcPreferredInvoker(newRule);
     }
 
@@ -445,6 +447,7 @@ public class MigrationInvoker<T> implements MigrationClusterInvoker<T> {
             if (invoker != null) {
                 invoker.destroy();
             }
+            // 根据注册中心更新本地委托对象invoker
             invoker = registryProtocol.getInvoker(cluster, registry, type, url);
         }
         setListener(invoker, () -> {
