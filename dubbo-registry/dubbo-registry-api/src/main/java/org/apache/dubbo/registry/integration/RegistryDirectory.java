@@ -152,6 +152,7 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
                 providerURLs = addressListener.notify(providerURLs, getConsumerUrl(),this);
             }
         }
+        // 刷新invoker
         refreshOverrideAndInvoker(providerURLs);
     }
 
@@ -175,6 +176,7 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
     private synchronized void refreshOverrideAndInvoker(List<URL> urls) {
         // mock zookeeper://xxx?mock=return null
         overrideDirectoryUrl();
+        // 刷新invoker
         refreshInvoker(urls);
     }
 
