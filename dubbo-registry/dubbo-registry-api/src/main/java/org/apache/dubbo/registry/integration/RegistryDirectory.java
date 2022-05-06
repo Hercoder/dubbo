@@ -190,21 +190,32 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
      * rule, which needs to be re-contrasted to decide whether to re-reference.</li>
      * </ol>
      *
+     * 更新本地invoker列表
+     *
      * @param invokerUrls this parameter can't be null
      */
     private void refreshInvoker(List<URL> invokerUrls) {
         Assert.notNull(invokerUrls, "invokerUrls should not be null");
 
+        // 判断是否有empty://开头
         if (invokerUrls.size() == 1
                 && invokerUrls.get(0) != null
                 && EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
+            // 禁止远程调用
             this.forbidden = true; // Forbid to access
             this.invokers = Collections.emptyList();
             routerChain.setInvokers(this.invokers);
+            // 将缓存中的所有invoker删除
             destroyAllInvokers(); // Close all invokers
         } else {
+            // 允许远程访问
             this.forbidden = false; // Allow to access
+            // 缓存map，更新本地invoker列表，就是更新这里
+            // key为url，value为该url对应的invoker实例（invoker委托对象）
+            // 先将缓存map发生变更前的值进行暂存
             Map<URL, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
+
+            // 这段代码可以提升provider的可用性
             if (invokerUrls == Collections.<URL>emptyList()) {
                 invokerUrls = new ArrayList<>();
             }
@@ -214,9 +225,14 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
                 this.cachedInvokerUrls = new HashSet<>();
                 this.cachedInvokerUrls.addAll(invokerUrls);//Cached invoker urls, convenient for comparison
             }
+
+            // 走到这里invokerUrls仍为空，则说明真的是没有任何可用的invoker
             if (invokerUrls.isEmpty()) {
                 return;
             }
+
+            // 从缓存中获取相应的委托invoker，若存在，则返回，并将其从缓存map中删除
+            // 若不存在，则创建一个invoker
             Map<URL, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**
@@ -233,14 +249,17 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
                 return;
             }
 
+            // 获取到最新的可用的invoker列表
             List<Invoker<T>> newInvokers = Collections.unmodifiableList(new ArrayList<>(newUrlInvokerMap.values()));
             // pre-route and build cache, notice that route cache should build on original Invoker list.
             // toMergeMethodInvokerMap() will wrap some invokers having different groups, those wrapped invokers not should be routed.
             routerChain.setInvokers(newInvokers);
             this.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;
+            // 将缓存map更新为细map
             this.urlInvokerMap = newUrlInvokerMap;
 
             try {
+                // 删除老map中剩余的invoker
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
                 logger.warn("destroyUnusedInvokers error. ", e);
@@ -313,6 +332,7 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
      * @return invokers
      */
     private Map<URL, Invoker<T>> toInvokers(List<URL> urls) {
+        // ---------------- 以下是对urls的各种检测------------------------
         Map<URL, Invoker<T>> newUrlInvokerMap = new ConcurrentHashMap<>();
         if (urls == null || urls.isEmpty()) {
             return newUrlInvokerMap;
@@ -343,29 +363,40 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
                         ExtensionLoader.getExtensionLoader(Protocol.class).getSupportedExtensions()));
                 continue;
             }
+
+            // ---------------- 以上是对urls的各种检测------------------------
+
+            // 将provider相关的配置进行合并
             URL url = mergeUrl(providerUrl);
 
             // Cache key is url that does not merge with consumer side parameters, regardless of how the consumer combines parameters, if the server url changes, then refer again
             Map<URL, Invoker<T>> localUrlInvokerMap = this.urlInvokerMap; // local reference
+            // 若缓存map为空，则直接返回null，说明缓存map中没有当前url对应的invoker
+            // 若缓存map不空，则获取缓存map中该url对应的invoker，则同时将该Entry删除
             Invoker<T> invoker = localUrlInvokerMap == null ? null : localUrlInvokerMap.remove(url);
             if (invoker == null) { // Not in the cache, refer again
                 try {
                     boolean enabled = true;
+                    // 从url中获取disabled或enable属性
                     if (url.hasParameter(DISABLED_KEY)) {
                         enabled = !url.getParameter(DISABLED_KEY, false);
                     } else {
                         enabled = url.getParameter(ENABLED_KEY, true);
                     }
+                    // 若当前url中没有禁用该invoker
                     if (enabled) {
+                        // 创建invoker委托对象
                         invoker = protocol.refer(serviceType, url);
                     }
                 } catch (Throwable t) {
                     logger.error("Failed to refer invoker for interface:" + serviceType + ",url:(" + url + ")" + t.getMessage(), t);
                 }
                 if (invoker != null) { // Put new invoker in cache
+                    // 将创建的委托对象写入到新 map 中
                     newUrlInvokerMap.put(url, invoker);
                 }
             } else {
+                // 将缓存中获取的这个invoker写入到新map中
                 newUrlInvokerMap.put(url, invoker);
             }
         }
@@ -478,6 +509,8 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
     }
 
     private void destroyUnusedInvokers(Map<URL, Invoker<T>> oldUrlInvokerMap, Map<URL, Invoker<T>> newUrlInvokerMap) {
+        // 若最新的invoker列表为空，则说明当前已经没有任何可用的invoker了
+        // 此时将缓存map中的所有invoker全部删除
         if (newUrlInvokerMap == null || newUrlInvokerMap.size() == 0) {
             destroyAllInvokers();
             return;
@@ -487,6 +520,8 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
             return;
         }
 
+        // 将原来缓存map中的invoker全部删除，因为它们中的这些已经没用了
+        // 最新可用的都在新map中
         for (Map.Entry<URL, Invoker<T>> entry : oldUrlInvokerMap.entrySet()) {
             Invoker<T> invoker = entry.getValue();
             if (invoker != null) {
