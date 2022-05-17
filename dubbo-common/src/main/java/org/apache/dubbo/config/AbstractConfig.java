@@ -490,6 +490,7 @@ public abstract class AbstractConfig implements Serializable {
             preProcessRefresh();
 
             Environment environment = ApplicationModel.getEnvironment();
+            // 这里就是获取系统、项目属性相关的键值对
             List<Map<String, String>> configurationMaps = environment.getConfigurationMaps();
 
             // Search props starts with PREFIX in order
