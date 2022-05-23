@@ -553,6 +553,7 @@ public class DubboBootstrap {
      * Initialize
      */
     public synchronized void initialize() {
+        // 处理DubboAnnotationInitedEvent事件时，initialized没有初始化
         if (!initialized.compareAndSet(false, true)) {
             return;
         }
