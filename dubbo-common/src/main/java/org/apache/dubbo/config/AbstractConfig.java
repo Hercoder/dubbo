@@ -482,6 +482,8 @@ public abstract class AbstractConfig implements Serializable {
 
     /**
      * Dubbo config property override
+     * 初始化标签 <dubbo:config-center address="zookeeper://111.229.198.184:21811" protocol="zookeeper" includeSpringEnv="false" port="21811" />
+     * <dubbo:application name="demo-provider" id="demo-provider" />
      */
     public void refresh() {
         refreshed.set(true);
@@ -493,7 +495,7 @@ public abstract class AbstractConfig implements Serializable {
             // 这里就是获取系统、项目属性相关的键值对
             List<Map<String, String>> configurationMaps = environment.getConfigurationMaps();
 
-            // Search props starts with PREFIX in order
+            // Search props starts with PREFIX（前缀） in order
             String preferredPrefix = null;
             for (String prefix : getPrefixes()) {
                 if (ConfigurationUtils.hasSubProperties(configurationMaps, prefix)) {

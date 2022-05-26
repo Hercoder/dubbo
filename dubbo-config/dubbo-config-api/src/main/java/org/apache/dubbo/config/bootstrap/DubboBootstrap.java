@@ -559,7 +559,7 @@ public class DubboBootstrap {
         }
 
         ApplicationModel.initFrameworkExts();
-
+        // 配置的初始化
         startConfigCenter();
 
         loadConfigsFromProps();
@@ -1110,7 +1110,7 @@ public class DubboBootstrap {
                 startup.set(false);
                 shutdown.set(false);
                 awaited.set(false);
-
+                // 初始化方法
                 initialize();
 
                 if (logger.isInfoEnabled()) {
